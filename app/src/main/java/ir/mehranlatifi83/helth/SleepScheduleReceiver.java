@@ -38,6 +38,7 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
                 .edit().putBoolean("sleep_active", true).apply();
 
         notify(ctx, R.string.notif_sleep_time_title, R.string.notif_sleep_time_text, 2);
+        SleepLockActivity.launch(ctx);
     }
 
     private void deactivateSleepMode(Context ctx) {

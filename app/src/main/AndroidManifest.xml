@@ -37,6 +37,15 @@
             </intent-filter>
         </service>
 
+        <activity
+            android:name=".SleepLockActivity"
+            android:exported="false"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Helth"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true"/>
+
         <receiver
             android:name=".SleepScheduleReceiver"
             android:exported="false">

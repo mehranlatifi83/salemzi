@@ -105,6 +105,16 @@ public class MainActivity extends AppCompatActivity {
         requestNotificationPermission();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // sync state بعد از برگشت از lock screen
+        isSleepActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_SLEEP_ACTIVE, false);
+        updateSleepUI();
+        updateScheduleUI();
+    }
+
     // ─── Sleep mode ──────────────────────────────────────────────────────────
 
     private void toggleSleepMode() {
@@ -129,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
         isSleepActive = true;
         saveState();
         updateSleepUI();
+        SleepLockActivity.launch(this);
     }
 
     private void stopSleepMode() {
