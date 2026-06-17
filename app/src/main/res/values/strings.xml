@@ -78,8 +78,14 @@
     <string name="water_channel_name">یادآور آب</string>
     <string name="water_reminders_label">یادآورهای آب</string>
     <string name="water_schedule_label">زمان‌بندی امروز</string>
-    <string name="water_schedule_hint">زمان‌ها بر اساس ساعت خواب و بیداری تنظیم شده‌اند</string>
+    <string name="water_schedule_hint">زمان‌ها طبق وعده‌ها و توصیه‌های پزشکی محاسبه شده‌اند</string>
     <string name="water_done_btn">خوردم ✓</string>
+    <string name="water_no_times_yet">ساعت بیداری یا وعده‌ها رو تنظیم کن تا برنامه آب نمایش داده بشه</string>
+    <string name="meal_times_label">وعده‌های غذایی</string>
+    <string name="meal_breakfast">صبحانه</string>
+    <string name="meal_lunch">ناهار</string>
+    <string name="meal_dinner">شام</string>
+    <string name="meal_times_hint">۳۰ دقیقه قبل و ۹۰ دقیقه بعد از هر وعده آب توصیه نمیشه</string>
 
     <string name="water_reminder_title_0">💧 وقت آبه!</string>
     <string name="water_reminder_text_0">یه لیوان آب بخور — بدنت بعد از خواب به آبرسانی نیاز داره.</string>
