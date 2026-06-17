@@ -267,40 +267,55 @@ public class SleepLockActivity extends AppCompatActivity {
 
     // ─── Math captcha ────────────────────────────────────────────────────────
 
-    /** Generates a new arithmetic problem. Difficulty scales with wrong attempts:
-     *  0–1 wrong  → simple addition / subtraction (results 20–80)
-     *  2–3 wrong  → single-digit multiplication (3–10 × 3–10)
-     *  4+ wrong   → harder multiplication (7–12 × 7–12) */
+    /** Generates a multi-step arithmetic problem. Difficulty scales with wrong attempts.
+     *
+     *  Level 0 (0–1 wrong): 2-digit × 1-digit  →  e.g. "34 × 7 = ؟"
+     *    Requires real mental multiplication; impossible to solve on autopilot.
+     *
+     *  Level 1 (2–3 wrong): chained  →  e.g. "(8 × 7) + 23 = ؟"
+     *    Forces working memory: compute product first, then add/subtract.
+     *
+     *  Level 2 (4+ wrong): double multiplication  →  e.g. "(6 × 8) + (4 × 7) = ؟"
+     *    Requires holding two intermediate results simultaneously. */
     private void generateNewProblem() {
         Random rnd = new Random();
-        int a, b;
-        String op;
+        String problem;
 
         int difficulty = Math.min(wrongCount / 2, 2);
         switch (difficulty) {
-            case 0:
-                a = 10 + rnd.nextInt(40);
-                b = 10 + rnd.nextInt(40);
-                if (rnd.nextBoolean()) {
-                    op = "+";  mathAnswer = a + b;
+            case 0: {
+                int a = 12 + rnd.nextInt(29); // 12–40
+                int b = 3  + rnd.nextInt(7);  // 3–9
+                mathAnswer = a * b;
+                problem = a + " × " + b + " = ؟";
+                break;
+            }
+            case 1: {
+                int a    = 3  + rnd.nextInt(7);  // 3–9
+                int b    = 3  + rnd.nextInt(7);  // 3–9
+                int c    = 11 + rnd.nextInt(29); // 11–39
+                int base = a * b;
+                if (rnd.nextBoolean() || base <= c) {
+                    mathAnswer = base + c;
+                    problem = "(" + a + " × " + b + ") + " + c + " = ؟";
                 } else {
-                    if (a < b) { int t = a; a = b; b = t; }
-                    op = "−";  mathAnswer = a - b;
+                    mathAnswer = base - c;
+                    problem = "(" + a + " × " + b + ") - " + c + " = ؟";
                 }
                 break;
-            case 1:
-                a = 3 + rnd.nextInt(8);
-                b = 3 + rnd.nextInt(8);
-                op = "×";  mathAnswer = a * b;
+            }
+            default: {
+                int a = 3 + rnd.nextInt(7); // 3–9
+                int b = 3 + rnd.nextInt(7); // 3–9
+                int c = 3 + rnd.nextInt(6); // 3–8
+                int d = 3 + rnd.nextInt(6); // 3–8
+                mathAnswer = a * b + c * d;
+                problem = "(" + a + " × " + b + ") + (" + c + " × " + d + ") = ؟";
                 break;
-            default:
-                a = 7 + rnd.nextInt(6);
-                b = 7 + rnd.nextInt(6);
-                op = "×";  mathAnswer = a * b;
-                break;
+            }
         }
 
-        textMathProblem.setText(a + "  " + op + "  " + b + "  =  ؟");
+        textMathProblem.setText(problem);
         editAnswer.setText("");
         textError.setVisibility(View.INVISIBLE);
         inputLayoutAnswer.setError(null);
