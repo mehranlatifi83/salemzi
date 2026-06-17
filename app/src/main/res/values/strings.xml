@@ -77,38 +77,24 @@
     <!-- Water reminders -->
     <string name="water_channel_name">یادآور آب</string>
     <string name="water_reminders_label">یادآورهای آب</string>
-    <string name="meal_times_label">زمان وعده‌های غذایی</string>
-    <string name="meal_breakfast">صبحانه</string>
-    <string name="meal_lunch">ناهار</string>
-    <string name="meal_dinner">شام</string>
-    <string name="water_schedule_label">یادآورهای امروز</string>
-    <string name="water_no_times_yet">هنوز وعده‌ای تنظیم نشده</string>
+    <string name="water_schedule_label">زمان‌بندی امروز</string>
+    <string name="water_schedule_hint">زمان‌ها بر اساس ساعت خواب و بیداری تنظیم شده‌اند</string>
+    <string name="water_done_btn">خوردم ✓</string>
 
-    <string name="water_before_breakfast_title">💧 قبل از صبحانه</string>
-    <string name="water_before_breakfast_text">یه لیوان آب بخور — ۳۰ دقیقه دیگه وقت صبحانته. آب، معده رو آماده هضم می‌کنه.</string>
-    <string name="water_after_breakfast_title">💧 بعد از صبحانه</string>
-    <string name="water_after_breakfast_text">یه ساعت و نیم از صبحانه گذشته — الان وقت خوبیه برای آب خوردن.</string>
-    <string name="water_before_lunch_title">💧 قبل از ناهار</string>
-    <string name="water_before_lunch_text">یه لیوان آب بخور — ۳۰ دقیقه دیگه وقت ناهاره. هضم بهتر میشه.</string>
-    <string name="water_after_lunch_title">💧 بعد از ناهار</string>
-    <string name="water_after_lunch_text">یه ساعت و نیم از ناهار گذشته — بدنت به آب نیاز داره.</string>
-    <string name="water_before_dinner_title">💧 قبل از شام</string>
-    <string name="water_before_dinner_text">یه لیوان آب بخور — ۳۰ دقیقه دیگه وقت شامه.</string>
-    <string name="water_after_dinner_title">💧 بعد از شام</string>
-    <string name="water_after_dinner_text">یه ساعت و نیم از شام گذشته — آب بخور تا خواب بهتری داشته باشی.</string>
-    <string name="water_morning_title">💧 صبح بخیر</string>
-    <string name="water_morning_text">بعد از خواب بدن کم‌آبه — یه لیوان آب اول صبح بدنت رو شارژ می‌کنه.</string>
-    <string name="water_evening_title">💧 آبرسانی شبانه</string>
-    <string name="water_evening_text">قبل از خواب آب بخور — ولی نه خیلی زیاد. بدنت شب به آب نیاز داره.</string>
-
-    <string-array name="water_reminder_types">
-        <item>قبل از صبحانه</item>
-        <item>بعد از صبحانه</item>
-        <item>قبل از ناهار</item>
-        <item>بعد از ناهار</item>
-        <item>قبل از شام</item>
-        <item>بعد از شام</item>
-        <item>صبح</item>
-        <item>شب</item>
-    </string-array>
+    <string name="water_reminder_title_0">💧 وقت آبه!</string>
+    <string name="water_reminder_text_0">یه لیوان آب بخور — بدنت بعد از خواب به آبرسانی نیاز داره.</string>
+    <string name="water_reminder_title_1">💧 آب یادت نره</string>
+    <string name="water_reminder_text_1">هیدراته موندن باعث تمرکز و انرژی بیشتر میشه.</string>
+    <string name="water_reminder_title_2">💧 یه استراحت کوتاه</string>
+    <string name="water_reminder_text_2">بلند شو یه لیوان آب بخور — بدنت ممنونت میشه.</string>
+    <string name="water_reminder_title_3">💧 وقت آبه!</string>
+    <string name="water_reminder_text_3">اگه احساس خستگی می‌کنی، شاید کم‌آبی داری. یه لیوان آب بخور.</string>
+    <string name="water_reminder_title_4">💧 یادآور آب</string>
+    <string name="water_reminder_text_4">نیمه راه روز رو رد کردی — با یه لیوان آب به خودت انرژی بده.</string>
+    <string name="water_reminder_title_5">💧 آب بخور</string>
+    <string name="water_reminder_text_5">بدن ۶۰٪ آبه — بذار همینطور بمونه!</string>
+    <string name="water_reminder_title_6">💧 وقت آبه!</string>
+    <string name="water_reminder_text_6">قبل از شام یه لیوان آب بخور — اشتها رو کنترل می‌کنه.</string>
+    <string name="water_reminder_title_7">💧 آخرین یادآور</string>
+    <string name="water_reminder_text_7">آخرین وعده آب امروز — قبل از خواب هیدراته بمون.</string>
 </resources>

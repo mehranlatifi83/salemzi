@@ -69,6 +69,15 @@
             android:name=".WaterActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".WaterOverlayActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Helth"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true" />
+
         <receiver
             android:name=".WaterReminderReceiver"
             android:exported="false">
