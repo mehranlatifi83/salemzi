@@ -35,8 +35,10 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS            = "helth_prefs";
-    private static final String KEY_SLEEP_ACTIVE = "sleep_active";
+    private static final String PREFS                   = "helth_prefs";
+    private static final String KEY_SLEEP_ACTIVE        = "sleep_active";
+    private static final String KEY_OB_DND_SHOWN        = "onboarding_dnd_shown";
+    private static final String KEY_OB_OVERLAY_SHOWN    = "onboarding_overlay_shown";
 
     private MaterialButton   btnToggle;
     private TextView         textStatus;
@@ -112,7 +114,8 @@ public class MainActivity extends AppCompatActivity {
                 .getBoolean(KEY_SLEEP_ACTIVE, false);
         updateSleepUI();
         updateScheduleUI();
-        updateOverlayUI(); // Refresh in case user just returned from overlay settings
+        updateOverlayUI();
+        checkOnboarding(); // Show sequential first-time permission dialogs
     }
 
     // ─── View wiring ─────────────────────────────────────────────────────────
@@ -316,6 +319,57 @@ public class MainActivity extends AppCompatActivity {
                         isTimed ? SleepLockActivity.MODE_MATH : SleepLockActivity.MODE_TIMED)
                 .apply();
         updateLockModeUI();
+    }
+
+    // ─── First-time onboarding ───────────────────────────────────────────────
+
+    /** Shows DND then overlay permission dialogs sequentially, each only once. */
+    private void checkOnboarding() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        NotificationManager nm  = getSystemService(NotificationManager.class);
+
+        // Step 1: DND — show if not granted and not yet prompted
+        if (!nm.isNotificationPolicyAccessGranted()
+                && !prefs.getBoolean(KEY_OB_DND_SHOWN, false)) {
+            prefs.edit().putBoolean(KEY_OB_DND_SHOWN, true).apply();
+            showDndOnboardingDialog();
+            return;
+        }
+
+        // Step 2: Overlay — show only after DND step is handled
+        boolean dndHandled = nm.isNotificationPolicyAccessGranted()
+                || prefs.getBoolean(KEY_OB_DND_SHOWN, false);
+        if (dndHandled
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && !Settings.canDrawOverlays(this)
+                && !prefs.getBoolean(KEY_OB_OVERLAY_SHOWN, false)) {
+            prefs.edit().putBoolean(KEY_OB_OVERLAY_SHOWN, true).apply();
+            showOverlayOnboardingDialog();
+        }
+    }
+
+    private void showDndOnboardingDialog() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.dnd_dialog_title)
+                .setMessage(R.string.dnd_onboarding_message)
+                .setPositiveButton(R.string.go_to_settings, (d, w) ->
+                        startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)))
+                .setNegativeButton(R.string.later, (d, w) ->
+                        checkOnboarding()) // Advance to overlay step immediately
+                .setCancelable(false)
+                .show();
+    }
+
+    private void showOverlayOnboardingDialog() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.overlay_dialog_title)
+                .setMessage(R.string.overlay_onboarding_message)
+                .setPositiveButton(R.string.go_to_settings, (d, w) ->
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName()))))
+                .setNegativeButton(R.string.later, null)
+                .setCancelable(false)
+                .show();
     }
 
     private void onOverlayRowTapped() {
