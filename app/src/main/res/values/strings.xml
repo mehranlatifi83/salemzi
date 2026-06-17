@@ -44,4 +44,11 @@
     <string name="no_exit_hint">📵 تا وقت بیداری نمیتونی خارج بشی</string>
     <string name="time_until_wake">تا بیداری</string>
     <string name="no_wake_time_set">زمان بیداری تنظیم نشده</string>
+
+    <!-- Overlay permission -->
+    <string name="overlay_label">نمایش روی همه برنامه‌ها</string>
+    <string name="overlay_on">فعال ✓</string>
+    <string name="overlay_off">غیرفعال</string>
+    <string name="overlay_dialog_title">نمایش روی سایر برنامه‌ها</string>
+    <string name="overlay_dialog_message">بدون این دسترسی، وقتی ساعت خواب میشه و گوشی روشنه و تو یه برنامه دیگه‌ای، فقط یه نوتیفیکیشن میاد و باید رو اون ضربه بزنی.\n\nبا دادن این دسترسی، صفحه قفل خواب مستقیماً روی هر برنامه‌ای که بازه میاد — بدون نیاز به ضربه زدن.</string>
 </resources>

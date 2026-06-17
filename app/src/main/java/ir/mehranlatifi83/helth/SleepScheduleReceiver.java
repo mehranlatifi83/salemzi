@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.os.Build;
+import android.provider.Settings;
 
 import androidx.core.app.NotificationCompat;
 
@@ -40,9 +42,11 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
         ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("sleep_active", true).apply();
 
-        // On Android 10+, apps cannot start activities from the background.
-        // We use setFullScreenIntent so the system decides whether to show the
-        // activity directly (screen on) or as a heads-up notification (screen off).
+        // If the user granted SYSTEM_ALERT_WINDOW, launch the activity directly over
+        // whatever is currently on screen. Otherwise fall back to full-screen notification.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(ctx)) {
+            SleepLockActivity.launch(ctx);
+        }
         showSleepNotification(ctx);
     }
 

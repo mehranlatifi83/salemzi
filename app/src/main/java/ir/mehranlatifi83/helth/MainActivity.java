@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView         textScheduleHint;
     private MaterialSwitch   switchSchedule;
     private TextView         textLockMode;
+    private TextView         textOverlayStatus;
 
     private boolean isSleepActive = false;
 
@@ -77,6 +78,7 @@ public class MainActivity extends AppCompatActivity {
                 .getBoolean(KEY_SLEEP_ACTIVE, false);
         updateSleepUI();
         updateScheduleUI();
+        updateOverlayUI(); // Refresh in case user just returned from overlay settings
     }
 
     // ─── View wiring ─────────────────────────────────────────────────────────
@@ -90,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
         textWakeTime     = findViewById(R.id.text_wake_time);
         textScheduleHint = findViewById(R.id.text_schedule_hint);
         switchSchedule   = findViewById(R.id.switch_schedule);
-        textLockMode     = findViewById(R.id.text_lock_mode);
+        textLockMode      = findViewById(R.id.text_lock_mode);
+        textOverlayStatus = findViewById(R.id.text_overlay_status);
 
         ((TextView) findViewById(R.id.text_date)).setText(buildPersianDate());
 
@@ -100,9 +103,11 @@ public class MainActivity extends AppCompatActivity {
         updateSleepUI();
         updateScheduleUI();
         updateLockModeUI();
+        updateOverlayUI();
 
         btnToggle.setOnClickListener(v -> toggleSleepMode());
         findViewById(R.id.row_lock_mode).setOnClickListener(v -> toggleLockMode());
+        findViewById(R.id.row_overlay).setOnClickListener(v -> onOverlayRowTapped());
     }
 
     private void setupBottomNav() {
@@ -274,6 +279,36 @@ public class MainActivity extends AppCompatActivity {
                         isTimed ? SleepLockActivity.MODE_MATH : SleepLockActivity.MODE_TIMED)
                 .apply();
         updateLockModeUI();
+    }
+
+    private void onOverlayRowTapped() {
+        boolean hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || Settings.canDrawOverlays(this);
+        if (hasPermission) {
+            // Already granted — inform the user it's active
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.overlay_dialog_title)
+                    .setMessage(R.string.overlay_dialog_message)
+                    .setPositiveButton(R.string.cancel, null)
+                    .show();
+        } else {
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.overlay_dialog_title)
+                    .setMessage(R.string.overlay_dialog_message)
+                    .setPositiveButton(R.string.go_to_settings, (d, w) -> {
+                        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivity(i);
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        }
+    }
+
+    private void updateOverlayUI() {
+        boolean granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || Settings.canDrawOverlays(this);
+        textOverlayStatus.setText(granted ? R.string.overlay_on : R.string.overlay_off);
     }
 
     private void updateLockModeUI() {
