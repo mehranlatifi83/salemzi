@@ -34,30 +34,52 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS           = "helth_prefs";
+    private static final String PREFS            = "helth_prefs";
     private static final String KEY_SLEEP_ACTIVE = "sleep_active";
 
-    private MaterialButton    btnToggle;
-    private TextView          textStatus;
-    private MaterialCardView  cardCircle;
-    private ImageView         iconSleep;
-    private TextView          textSleepTime;
-    private TextView          textWakeTime;
-    private TextView          textScheduleHint;
-    private MaterialSwitch    switchSchedule;
+    private MaterialButton   btnToggle;
+    private TextView         textStatus;
+    private MaterialCardView cardCircle;
+    private ImageView        iconSleep;
+    private TextView         textSleepTime;
+    private TextView         textWakeTime;
+    private TextView         textScheduleHint;
+    private MaterialSwitch   switchSchedule;
 
     private boolean isSleepActive = false;
 
+    /** Handles the system VPN-permission dialog result. */
     private final ActivityResultLauncher<Intent> vpnLauncher = registerForActivityResult(
-        new ActivityResultContracts.StartActivityForResult(),
-        result -> { if (result.getResultCode() == RESULT_OK) startSleepMode(); }
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> { if (result.getResultCode() == RESULT_OK) startSleepMode(); }
     );
+
+    // ─── Lifecycle ───────────────────────────────────────────────────────────
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        bindViews();
+        setupBottomNav();
+        setupScheduleCard();
+        requestNotificationPermissionIfNeeded();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Sync sleep state in case it was changed by the lock screen or the schedule alarm
+        isSleepActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_SLEEP_ACTIVE, false);
+        updateSleepUI();
+        updateScheduleUI();
+    }
+
+    // ─── View wiring ─────────────────────────────────────────────────────────
+
+    private void bindViews() {
         btnToggle        = findViewById(R.id.btn_toggle);
         textStatus       = findViewById(R.id.text_status);
         cardCircle       = findViewById(R.id.card_circle);
@@ -66,56 +88,31 @@ public class MainActivity extends AppCompatActivity {
         textWakeTime     = findViewById(R.id.text_wake_time);
         textScheduleHint = findViewById(R.id.text_schedule_hint);
         switchSchedule   = findViewById(R.id.switch_schedule);
-        TextView textDate = findViewById(R.id.text_date);
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_nav);
 
-        textDate.setText(getPersianDate());
-        bottomNav.setSelectedItemId(R.id.nav_sleep);
+        ((TextView) findViewById(R.id.text_date)).setText(buildPersianDate());
 
-        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        isSleepActive = prefs.getBoolean(KEY_SLEEP_ACTIVE, false);
+        isSleepActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(KEY_SLEEP_ACTIVE, false);
+
         updateSleepUI();
         updateScheduleUI();
 
         btnToggle.setOnClickListener(v -> toggleSleepMode());
+    }
 
-        cardCircle.setOnClickListener(v -> {
-            // reserved for future detail screen
-        });
+    private void setupBottomNav() {
+        ((BottomNavigationView) findViewById(R.id.bottom_nav))
+                .setSelectedItemId(R.id.nav_sleep);
+    }
 
-        // کارت برنامه خواب — باز کردن تایم‌پیکر
+    private void setupScheduleCard() {
+        // Tapping the card opens the time pickers
         findViewById(R.id.card_schedule).setOnClickListener(v -> showSleepTimePicker());
 
-        // سوییچ برنامه خواب
-        switchSchedule.setOnCheckedChangeListener((btn, checked) -> {
-            if (checked && !ScheduleManager.hasSchedule(this)) {
-                switchSchedule.setChecked(false);
-                showSleepTimePicker();
-                return;
-            }
-            if (checked && !ScheduleManager.canScheduleExact(this)) {
-                switchSchedule.setChecked(false);
-                showAlarmPermissionDialog();
-                return;
-            }
-            ScheduleManager.setScheduleEnabled(this, checked);
-            updateScheduleUI();
-        });
-
-        requestNotificationPermission();
+        switchSchedule.setOnCheckedChangeListener((btn, checked) -> onScheduleSwitchChanged(checked));
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // sync state بعد از برگشت از lock screen
-        isSleepActive = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getBoolean(KEY_SLEEP_ACTIVE, false);
-        updateSleepUI();
-        updateScheduleUI();
-    }
-
-    // ─── Sleep mode ──────────────────────────────────────────────────────────
+    // ─── Sleep mode toggle ───────────────────────────────────────────────────
 
     private void toggleSleepMode() {
         if (isSleepActive) {
@@ -123,22 +120,26 @@ public class MainActivity extends AppCompatActivity {
         } else {
             Intent vpnIntent = VpnService.prepare(this);
             if (vpnIntent != null) vpnLauncher.launch(vpnIntent);
-            else startSleepMode();
+            else                   startSleepMode();
         }
     }
 
     private void startSleepMode() {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !nm.isNotificationPolicyAccessGranted()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && !nm.isNotificationPolicyAccessGranted()) {
             showDndPermissionDialog();
             return;
         }
-        startService(new Intent(this, SleepVpnService.class));
+
+        startForegroundService(new Intent(this, SleepVpnService.class));
         ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
                 .setRingerMode(AudioManager.RINGER_MODE_SILENT);
+
         isSleepActive = true;
-        saveState();
+        persistSleepState();
         updateSleepUI();
+
         SleepLockActivity.launch(this);
     }
 
@@ -147,12 +148,13 @@ public class MainActivity extends AppCompatActivity {
         SleepVpnService.disconnect();
         ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
                 .setRingerMode(AudioManager.RINGER_MODE_NORMAL);
+
         isSleepActive = false;
-        saveState();
+        persistSleepState();
         updateSleepUI();
     }
 
-    private void saveState() {
+    private void persistSleepState() {
         getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putBoolean(KEY_SLEEP_ACTIVE, isSleepActive).apply();
     }
@@ -161,12 +163,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void showSleepTimePicker() {
         int[] saved = ScheduleManager.getSleepTime(this);
-        int h = saved != null ? saved[0] : 23;
-        int m = saved != null ? saved[1] : 0;
-
         MaterialTimePicker picker = new MaterialTimePicker.Builder()
                 .setTimeFormat(TimeFormat.CLOCK_24H)
-                .setHour(h).setMinute(m)
+                .setHour(saved != null ? saved[0] : 23)
+                .setMinute(saved != null ? saved[1] : 0)
                 .setTitleText(R.string.picker_sleep_title)
                 .build();
 
@@ -179,18 +179,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void showWakeTimePicker() {
         int[] saved = ScheduleManager.getWakeTime(this);
-        int h = saved != null ? saved[0] : 7;
-        int m = saved != null ? saved[1] : 0;
-
         MaterialTimePicker picker = new MaterialTimePicker.Builder()
                 .setTimeFormat(TimeFormat.CLOCK_24H)
-                .setHour(h).setMinute(m)
+                .setHour(saved != null ? saved[0] : 7)
+                .setMinute(saved != null ? saved[1] : 0)
                 .setTitleText(R.string.picker_wake_title)
                 .build();
 
         picker.addOnPositiveButtonClickListener(v -> {
             ScheduleManager.saveWakeTime(this, picker.getHour(), picker.getMinute());
-            // اگه برنامه فعال بود، آلارم‌ها رو آپدیت کن
             if (ScheduleManager.isScheduleEnabled(this)) {
                 ScheduleManager.scheduleSleepAlarm(this);
                 ScheduleManager.scheduleWakeAlarm(this);
@@ -200,12 +197,27 @@ public class MainActivity extends AppCompatActivity {
         picker.show(getSupportFragmentManager(), "wake_picker");
     }
 
-    // ─── UI updates ──────────────────────────────────────────────────────────
+    private void onScheduleSwitchChanged(boolean checked) {
+        if (checked && !ScheduleManager.hasSchedule(this)) {
+            switchSchedule.setChecked(false);
+            showSleepTimePicker();
+            return;
+        }
+        if (checked && !ScheduleManager.canScheduleExact(this)) {
+            switchSchedule.setChecked(false);
+            showAlarmPermissionDialog();
+            return;
+        }
+        ScheduleManager.setScheduleEnabled(this, checked);
+        updateScheduleUI();
+    }
+
+    // ─── UI state ────────────────────────────────────────────────────────────
 
     private void updateSleepUI() {
-        int primary  = ContextCompat.getColor(this, R.color.colorPrimary);
-        int variant  = ContextCompat.getColor(this, R.color.colorOnSurfaceVariant);
-        int surface  = ContextCompat.getColor(this, R.color.colorSurface);
+        int primary = ContextCompat.getColor(this, R.color.colorPrimary);
+        int muted   = ContextCompat.getColor(this, R.color.colorOnSurfaceVariant);
+        int surface = ContextCompat.getColor(this, R.color.colorSurface);
 
         if (isSleepActive) {
             textStatus.setText(R.string.status_active);
@@ -215,54 +227,38 @@ public class MainActivity extends AppCompatActivity {
             iconSleep.setImageTintList(ColorStateList.valueOf(primary));
         } else {
             textStatus.setText(R.string.status_inactive);
-            textStatus.setTextColor(variant);
+            textStatus.setTextColor(muted);
             btnToggle.setText(R.string.btn_enable_sleep);
             cardCircle.setStrokeColor(surface);
-            iconSleep.setImageTintList(ColorStateList.valueOf(variant));
+            iconSleep.setImageTintList(ColorStateList.valueOf(muted));
         }
     }
 
     private void updateScheduleUI() {
-        int[] sleep = ScheduleManager.getSleepTime(this);
-        int[] wake  = ScheduleManager.getWakeTime(this);
-        boolean enabled = ScheduleManager.isScheduleEnabled(this);
+        int[] sleep   = ScheduleManager.getSleepTime(this);
+        int[] wake    = ScheduleManager.getWakeTime(this);
+        boolean on    = ScheduleManager.isScheduleEnabled(this);
 
-        textSleepTime.setText(sleep != null ? formatTime(sleep[0], sleep[1])
-                : getString(R.string.schedule_not_set));
-        textWakeTime.setText(wake != null ? formatTime(wake[0], wake[1])
-                : getString(R.string.schedule_not_set));
+        textSleepTime.setText(sleep != null ? fmt(sleep[0], sleep[1]) : getString(R.string.schedule_not_set));
+        textWakeTime.setText(wake   != null ? fmt(wake[0],  wake[1])  : getString(R.string.schedule_not_set));
 
-        switchSchedule.setOnCheckedChangeListener(null); // موقتاً برای جلوگیری از loop
-        switchSchedule.setChecked(enabled);
-        switchSchedule.setOnCheckedChangeListener((btn, checked) -> {
-            if (checked && !ScheduleManager.hasSchedule(this)) {
-                switchSchedule.setChecked(false);
-                showSleepTimePicker();
-                return;
-            }
-            if (checked && !ScheduleManager.canScheduleExact(this)) {
-                switchSchedule.setChecked(false);
-                showAlarmPermissionDialog();
-                return;
-            }
-            ScheduleManager.setScheduleEnabled(this, checked);
-            updateScheduleUI();
-        });
+        // Detach listener to avoid re-entrancy while programmatically updating
+        switchSchedule.setOnCheckedChangeListener(null);
+        switchSchedule.setChecked(on);
+        switchSchedule.setOnCheckedChangeListener((btn, checked) -> onScheduleSwitchChanged(checked));
 
         if (!ScheduleManager.hasSchedule(this)) {
             textScheduleHint.setText(R.string.tap_to_set);
-        } else if (enabled) {
-            textScheduleHint.setText(R.string.schedule_active);
         } else {
-            textScheduleHint.setText(R.string.schedule_inactive);
+            textScheduleHint.setText(on ? R.string.schedule_active : R.string.schedule_inactive);
         }
     }
 
-    private String formatTime(int hour, int minute) {
-        return String.format(Locale.getDefault(), "%02d:%02d", hour, minute);
+    private String fmt(int h, int m) {
+        return String.format(Locale.getDefault(), "%02d:%02d", h, m);
     }
 
-    // ─── Permissions & dialogs ───────────────────────────────────────────────
+    // ─── Permission dialogs ──────────────────────────────────────────────────
 
     private void showDndPermissionDialog() {
         new AlertDialog.Builder(this)
@@ -271,7 +267,8 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton(R.string.go_to_settings, (d, w) ->
                         startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)))
                 .setNegativeButton(R.string.cancel, null)
-                .setCancelable(false).show();
+                .setCancelable(false)
+                .show();
     }
 
     private void showAlarmPermissionDialog() {
@@ -283,29 +280,31 @@ public class MainActivity extends AppCompatActivity {
                         startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM));
                     }
                 })
-                .setNegativeButton(R.string.cancel, null).show();
+                .setNegativeButton(R.string.cancel, null)
+                .show();
     }
 
-    private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
-            }
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
         }
     }
 
     // ─── Date ────────────────────────────────────────────────────────────────
 
-    private String getPersianDate() {
-        Calendar cal = Calendar.getInstance();
-        String[] days   = {"یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"};
-        String[] months = {"فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
-                           "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"};
-        String day = days[cal.get(Calendar.DAY_OF_WEEK) - 1];
-        int[] j = JalaliCalendar.toJalali(cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
-        return day + "،  " + j[2] + " " + months[j[1] - 1] + " " + j[0];
+    private String buildPersianDate() {
+        Calendar cal    = Calendar.getInstance();
+        String[] days   = {"یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه","شنبه"};
+        String[] months = {"فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
+                           "مهر","آبان","آذر","دی","بهمن","اسفند"};
+        int[] j = JalaliCalendar.toJalali(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH));
+        return days[cal.get(Calendar.DAY_OF_WEEK) - 1]
+                + "،  " + j[2] + " " + months[j[1] - 1] + " " + j[0];
     }
 }

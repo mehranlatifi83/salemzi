@@ -3,6 +3,7 @@ package ir.mehranlatifi83.helth;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +14,7 @@ import android.view.animation.AnimationUtils;
 import android.view.inputmethod.EditorInfo;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -28,32 +30,32 @@ import java.util.Random;
 
 public class SleepLockActivity extends AppCompatActivity {
 
-    private TextView         textClock;
-    private TextView         textLockDate;
-    private TextView         textMathProblem;
+    private TextView          textClock;
+    private TextView          textLockDate;
+    private TextView          textMathProblem;
     private TextInputEditText editAnswer;
-    private TextInputLayout  inputLayoutAnswer;
-    private TextView         textError;
+    private TextInputLayout   inputLayoutAnswer;
+    private TextView          textError;
 
-    private int  mathAnswer;
-    private int  wrongCount = 0;
-    private final Handler clockHandler = new Handler(Looper.getMainLooper());
+    private int mathAnswer;
+    private int wrongCount = 0;
 
-    private final Runnable clockTick = new Runnable() {
-        @Override
-        public void run() {
+    private final Handler   clockHandler = new Handler(Looper.getMainLooper());
+    private final Runnable  clockTick    = new Runnable() {
+        @Override public void run() {
             updateClock();
             clockHandler.postDelayed(this, 1000);
         }
     };
 
-    // ─── Launch helper ───────────────────────────────────────────────────────
+    // ─── Entry point ─────────────────────────────────────────────────────────
 
+    /** Launches the lock screen. Safe to call from any Activity context. */
     public static void launch(Context ctx) {
-        Intent i = new Intent(ctx, SleepLockActivity.class);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        Intent i = new Intent(ctx, SleepLockActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         ctx.startActivity(i);
     }
 
@@ -66,6 +68,7 @@ public class SleepLockActivity extends AppCompatActivity {
         setupWindowFlags();
         setContentView(R.layout.activity_sleep_lock);
         hideSystemBars();
+        blockBackButton();
 
         textClock         = findViewById(R.id.text_clock);
         textLockDate      = findViewById(R.id.text_lock_date);
@@ -101,39 +104,49 @@ public class SleepLockActivity extends AppCompatActivity {
         clockHandler.removeCallbacks(clockTick);
     }
 
-    // ─── Window setup ────────────────────────────────────────────────────────
+    // ─── Window / immersive mode ─────────────────────────────────────────────
 
     private void setupWindowFlags() {
-        getWindow().addFlags(
-            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-            | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-        );
+        int flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            // Recommended API for showing over the lock screen since API 27
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        } else {
+            flags |= WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                   | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
+        }
+
+        getWindow().addFlags(flags);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 
     private void hideSystemBars() {
         WindowInsetsControllerCompat ctrl =
-            WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         ctrl.setSystemBarsBehavior(
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         ctrl.hide(WindowInsetsCompat.Type.systemBars());
     }
 
-    // ─── Block back & recent apps ────────────────────────────────────────────
-
-    @Override
-    public void onBackPressed() {
-        // بلاکه — کاربر نمی‌تونه با Back برگرده
+    /** Registers an OnBackPressedCallback that does nothing, preventing
+     *  the user from dismissing the lock screen via the back gesture. */
+    private void blockBackButton() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() { /* intentionally empty */ }
+        });
     }
 
+    /** Intercepts hardware keys. Home and recents cannot be truly blocked
+     *  by apps, but returning true here suppresses the key event within
+     *  our activity, preventing unintended interactions. */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_HOME
-                || keyCode == KeyEvent.KEYCODE_APP_SWITCH
-                || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
                 || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-            return true; // بلاک
+            return true;
         }
         return super.onKeyDown(keyCode, event);
     }
@@ -142,56 +155,57 @@ public class SleepLockActivity extends AppCompatActivity {
 
     private void updateClock() {
         Calendar cal = Calendar.getInstance();
-        int h = cal.get(Calendar.HOUR_OF_DAY);
-        int m = cal.get(Calendar.MINUTE);
-        textClock.setText(String.format(Locale.getDefault(), "%02d:%02d", h, m));
-        textLockDate.setText(getPersianDate(cal));
+        textClock.setText(String.format(Locale.getDefault(),
+                "%02d:%02d",
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE)));
+        textLockDate.setText(buildPersianDate(cal));
     }
 
-    private String getPersianDate(Calendar cal) {
+    private String buildPersianDate(Calendar cal) {
         String[] days   = {"یکشنبه","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه","شنبه"};
         String[] months = {"فروردین","اردیبهشت","خرداد","تیر","مرداد","شهریور",
                            "مهر","آبان","آذر","دی","بهمن","اسفند"};
-        String dayName = days[cal.get(Calendar.DAY_OF_WEEK) - 1];
-        int[] j = JalaliCalendar.toJalali(cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
-        return dayName + "،  " + j[2] + " " + months[j[1] - 1];
+        int[] j = JalaliCalendar.toJalali(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH));
+        return days[cal.get(Calendar.DAY_OF_WEEK) - 1]
+                + "،  " + j[2] + " " + months[j[1] - 1];
     }
 
     // ─── Math captcha ────────────────────────────────────────────────────────
 
+    /** Generates a new arithmetic problem. Difficulty scales with wrong attempts:
+     *  0–1 wrong  → simple addition / subtraction (results 20–80)
+     *  2–3 wrong  → single-digit multiplication (3–10 × 3–10)
+     *  4+ wrong   → harder multiplication (7–12 × 7–12) */
     private void generateNewProblem() {
         Random rnd = new Random();
         int a, b;
         String op;
 
-        // با هر بار اشتباه، مسئله سخت‌تر میشه
         int difficulty = Math.min(wrongCount / 2, 2);
-
         switch (difficulty) {
-            case 0: // جمع/تفریق ساده
-                a = 10 + rnd.nextInt(30);
-                b = 10 + rnd.nextInt(30);
+            case 0:
+                a = 10 + rnd.nextInt(40);
+                b = 10 + rnd.nextInt(40);
                 if (rnd.nextBoolean()) {
-                    op = "+";
-                    mathAnswer = a + b;
+                    op = "+";  mathAnswer = a + b;
                 } else {
-                    if (a < b) { int tmp = a; a = b; b = tmp; }
-                    op = "−";
-                    mathAnswer = a - b;
+                    if (a < b) { int t = a; a = b; b = t; }
+                    op = "−";  mathAnswer = a - b;
                 }
                 break;
-            case 1: // ضرب تا ۱۰
+            case 1:
                 a = 3 + rnd.nextInt(8);
                 b = 3 + rnd.nextInt(8);
-                op = "×";
-                mathAnswer = a * b;
+                op = "×";  mathAnswer = a * b;
                 break;
-            default: // ضرب بزرگ‌تر
+            default:
                 a = 7 + rnd.nextInt(6);
                 b = 7 + rnd.nextInt(6);
-                op = "×";
-                mathAnswer = a * b;
+                op = "×";  mathAnswer = a * b;
                 break;
         }
 
@@ -202,55 +216,46 @@ public class SleepLockActivity extends AppCompatActivity {
     }
 
     private void checkAnswer() {
-        String input = editAnswer.getText() == null ? "" : editAnswer.getText().toString().trim();
-        if (input.isEmpty()) return;
+        String raw = editAnswer.getText() == null ? "" : editAnswer.getText().toString().trim();
+        if (raw.isEmpty()) return;
 
         try {
-            int typed = Integer.parseInt(input);
-            if (typed == mathAnswer) {
+            if (Integer.parseInt(raw) == mathAnswer) {
                 exitSleepMode();
             } else {
                 wrongCount++;
-                showWrongAnswer();
+                onWrongAnswer();
             }
         } catch (NumberFormatException e) {
-            showWrongAnswer();
+            wrongCount++;
+            onWrongAnswer();
         }
     }
 
-    private void showWrongAnswer() {
+    private void onWrongAnswer() {
         String msg;
-        if (wrongCount < 3) {
-            msg = "اشتباهه! دوباره امتحان کن";
-        } else if (wrongCount < 6) {
-            msg = "نه! بذار بخوابی 😴  (" + wrongCount + " بار اشتباه)";
-        } else {
-            msg = "برو بخواب! " + wrongCount + " بار اشتباه زدی 🌙";
-        }
+        if      (wrongCount < 3) msg = "اشتباهه! دوباره امتحان کن";
+        else if (wrongCount < 6) msg = "نه! بذار بخوابی 😴  (" + wrongCount + " بار اشتباه)";
+        else                     msg = "برو بخواب! " + wrongCount + " بار اشتباه زدی 🌙";
 
         textError.setText(msg);
         textError.setVisibility(View.VISIBLE);
-
-        // لرزش
         editAnswer.startAnimation(AnimationUtils.loadAnimation(this, R.anim.shake));
         editAnswer.setText("");
 
-        // مسئله جدید بده
-        editAnswer.postDelayed(this::generateNewProblem, 800);
+        // Generate a fresh problem after a short delay so the user reads the message
+        editAnswer.postDelayed(this::generateNewProblem, 900);
     }
 
     // ─── Exit ────────────────────────────────────────────────────────────────
 
     private void exitSleepMode() {
-        // VPN
         stopService(new Intent(this, SleepVpnService.class));
         SleepVpnService.disconnect();
 
-        // صدا
         ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
                 .setRingerMode(AudioManager.RINGER_MODE_NORMAL);
 
-        // state
         getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("sleep_active", false).apply();
 

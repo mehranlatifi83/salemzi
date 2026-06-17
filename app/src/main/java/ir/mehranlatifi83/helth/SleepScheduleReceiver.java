@@ -14,17 +14,20 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
 
     public static final String ACTION_SLEEP = "ir.mehranlatifi83.helth.ACTION_SLEEP";
     public static final String ACTION_WAKE  = "ir.mehranlatifi83.helth.ACTION_WAKE";
-    private static final String CHANNEL_ID  = "schedule_channel";
+
+    private static final String CHANNEL_ID = "schedule_channel";
+    private static final int    NOTIF_SLEEP = 2;
+    private static final int    NOTIF_WAKE  = 3;
 
     @Override
     public void onReceive(Context ctx, Intent intent) {
         String action = intent.getAction();
         if (ACTION_SLEEP.equals(action)) {
             activateSleepMode(ctx);
-            ScheduleManager.scheduleSleepAlarm(ctx); // فردا دوباره
+            ScheduleManager.scheduleSleepAlarm(ctx); // reschedule for next day
         } else if (ACTION_WAKE.equals(action)) {
             deactivateSleepMode(ctx);
-            ScheduleManager.scheduleWakeAlarm(ctx);  // فردا دوباره
+            ScheduleManager.scheduleWakeAlarm(ctx);  // reschedule for next day
         }
     }
 
@@ -37,8 +40,10 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
         ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("sleep_active", true).apply();
 
-        notify(ctx, R.string.notif_sleep_time_title, R.string.notif_sleep_time_text, 2);
-        SleepLockActivity.launch(ctx);
+        // On Android 10+, apps cannot start activities from the background.
+        // We use setFullScreenIntent so the system decides whether to show the
+        // activity directly (screen on) or as a heads-up notification (screen off).
+        showSleepNotification(ctx);
     }
 
     private void deactivateSleepMode(Context ctx) {
@@ -51,29 +56,62 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
         ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("sleep_active", false).apply();
 
-        notify(ctx, R.string.notif_wake_title, R.string.notif_wake_text, 3);
+        showWakeNotification(ctx);
     }
 
-    private void notify(Context ctx, int titleRes, int textRes, int id) {
+    /** Posts a high-priority notification with a full-screen intent that opens
+     *  the sleep lock screen. This is the correct approach for background-to-foreground
+     *  activity transitions on Android 10+ (API 29+). */
+    private void showSleepNotification(Context ctx) {
+        ensureChannel(ctx);
+
+        PendingIntent lockScreenPi = PendingIntent.getActivity(
+                ctx, 10,
+                new Intent(ctx, SleepLockActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        nm.notify(NOTIF_SLEEP, new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setContentTitle(ctx.getString(R.string.notif_sleep_time_title))
+                .setContentText(ctx.getString(R.string.notif_sleep_time_text))
+                .setSmallIcon(R.drawable.ic_moon)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setFullScreenIntent(lockScreenPi, true)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .build());
+    }
 
-        NotificationChannel ch = new NotificationChannel(CHANNEL_ID,
-                ctx.getString(R.string.channel_schedule_name),
-                NotificationManager.IMPORTANCE_HIGH);
-        nm.createNotificationChannel(ch);
+    private void showWakeNotification(Context ctx) {
+        ensureChannel(ctx);
 
-        PendingIntent openApp = PendingIntent.getActivity(ctx, 0,
+        PendingIntent openApp = PendingIntent.getActivity(
+                ctx, 0,
                 new Intent(ctx, MainActivity.class)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
 
-        nm.notify(id, new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setContentTitle(ctx.getString(titleRes))
-                .setContentText(ctx.getString(textRes))
-                .setSmallIcon(R.drawable.ic_moon)
+        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
+        nm.notify(NOTIF_WAKE, new NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setContentTitle(ctx.getString(R.string.notif_wake_title))
+                .setContentText(ctx.getString(R.string.notif_wake_text))
+                .setSmallIcon(R.drawable.ic_sun)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(openApp)
                 .setAutoCancel(true)
                 .build());
+    }
+
+    private void ensureChannel(Context ctx) {
+        NotificationChannel ch = new NotificationChannel(
+                CHANNEL_ID,
+                ctx.getString(R.string.channel_schedule_name),
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        ctx.getSystemService(NotificationManager.class).createNotificationChannel(ch);
     }
 }
