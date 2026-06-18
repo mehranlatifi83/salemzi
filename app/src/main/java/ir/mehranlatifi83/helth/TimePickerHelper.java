@@ -111,11 +111,19 @@ public class TimePickerHelper {
             if (root == null) return;
             // Resolve the resource ID by name to avoid a hard dependency on the
             // internal layout of Material Components.
+            // Resources from libraries are merged into the app's package at build time
             int btnId = root.getResources().getIdentifier(
                     "material_timepicker_mode_button", "id",
-                    "com.google.android.material");
-            if (btnId == 0) return;
-            android.view.View modeBtn = root.findViewById(btnId);
+                    ctx.getPackageName());
+            // Fallback: try the material library package directly
+            if (btnId == 0) {
+                btnId = root.getResources().getIdentifier(
+                        "material_timepicker_mode_button", "id",
+                        "com.google.android.material");
+            }
+            android.view.View modeBtn = (btnId != 0) ? root.findViewById(btnId) : null;
+            // Second fallback: traverse the view tree for an ImageButton in the content area
+            if (modeBtn == null) modeBtn = findModeButton(root);
             if (modeBtn == null) return;
             modeBtn.setOnClickListener(v -> {
                 int h = picker.getHour();
@@ -137,6 +145,25 @@ public class TimePickerHelper {
         np.setFormatter(i -> String.format(Locale.getDefault(), "%02d", i));
         np.invalidate();
         return np;
+    }
+
+    /**
+     * Traverses the picker's view tree to find the mode-toggle ImageButton.
+     * It's the only ImageButton that is NOT inside the dialog button bar.
+     */
+    private static android.view.View findModeButton(android.view.View root) {
+        if (!(root instanceof android.view.ViewGroup)) return null;
+        android.view.ViewGroup group = (android.view.ViewGroup) root;
+        for (int i = 0; i < group.getChildCount(); i++) {
+            android.view.View child = group.getChildAt(i);
+            if (child instanceof android.widget.ImageButton
+                    || child.getClass().getSimpleName().contains("CheckableImageButton")) {
+                return child;
+            }
+            android.view.View found = findModeButton(child);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private static int dp(Context ctx, int dp) {
