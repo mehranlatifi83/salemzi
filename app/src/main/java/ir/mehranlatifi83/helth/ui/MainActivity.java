@@ -374,16 +374,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onOverlayRowTapped() {
-        boolean hasPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
-                || Settings.canDrawOverlays(this);
         new AlertDialog.Builder(this)
                 .setTitle(R.string.overlay_dialog_title)
                 .setMessage(R.string.overlay_dialog_message)
-                .setPositiveButton(hasPermission ? R.string.cancel : R.string.go_to_settings,
-                        hasPermission ? null : (d, w) -> startActivity(
-                                new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:" + getPackageName()))))
-                .setNegativeButton(hasPermission ? null : R.string.cancel, null)
+                .setPositiveButton(R.string.go_to_settings, (d, w) ->
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName()))))
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 

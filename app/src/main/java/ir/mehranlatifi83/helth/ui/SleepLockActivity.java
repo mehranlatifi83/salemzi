@@ -1,8 +1,10 @@
 package ir.mehranlatifi83.helth.ui;
 
 import android.app.NotificationManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -63,12 +65,21 @@ public class SleepLockActivity extends AppCompatActivity {
     private TextView textLockDate;
 
     private int     mathAnswer;
-    private int     wrongCount  = 0;
+    private int     wrongCount       = 0;
     private boolean timedMode;
-    private boolean exitCalled  = false;
+    private boolean exitCalled       = false;
+    private boolean screenTurningOff = false;
 
     private CountDownTimer countDownTimer;
     private final Handler  clockHandler = new Handler(Looper.getMainLooper());
+
+    private final BroadcastReceiver screenOffReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context ctx, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                screenTurningOff = true;
+            }
+        }
+    };
     private final Runnable clockTick    = new Runnable() {
         @Override public void run() {
             updateClock();
@@ -117,6 +128,8 @@ public class SleepLockActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        screenTurningOff = false;
+        registerReceiver(screenOffReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
         clockHandler.post(clockTick);
         hideSystemBars();
     }
@@ -125,9 +138,9 @@ public class SleepLockActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         clockHandler.removeCallbacks(clockTick);
-        // Re-launch to prevent the user from navigating away via HOME.
-        // SYSTEM_ALERT_WINDOW permission allows starting activities from the background.
-        if (!exitCalled && !isFinishing()) {
+        try { unregisterReceiver(screenOffReceiver); } catch (IllegalArgumentException ignored) {}
+        // Re-launch to prevent HOME-button escape, but not when user is turning screen off.
+        if (!exitCalled && !isFinishing() && !screenTurningOff) {
             SleepLockActivity.launch(this);
         }
     }
@@ -173,18 +186,19 @@ public class SleepLockActivity extends AppCompatActivity {
     // ─── Window / immersive mode ─────────────────────────────────────────────
 
     private void setupWindowFlags() {
-        int flags = WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
         } else {
-            flags |= WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                   | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
+            getWindow().addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         }
-
-        getWindow().addFlags(flags);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+    }
+
+    private void keepScreenOn() {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void hideSystemBars() {
@@ -256,6 +270,7 @@ public class SleepLockActivity extends AppCompatActivity {
     }
 
     private void onWakeTimeReached() {
+        keepScreenOn();
         WakeAlarmService.start(this);
         textNoExitHint.setText(R.string.wake_time_reached);
         textCountdownLabel.setVisibility(View.GONE);
