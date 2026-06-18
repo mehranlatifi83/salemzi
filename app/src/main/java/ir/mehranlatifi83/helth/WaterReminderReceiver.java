@@ -69,7 +69,11 @@ public class WaterReminderReceiver extends BroadcastReceiver {
                 .putExtra(EXTRA_MIN,  m);
         PendingIntent pi = PendingIntent.getBroadcast(ctx, 200 + slot, reschedule,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tomorrow, pi);
+        try {
+            am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, tomorrow, pi);
+        } catch (SecurityException ignored) {
+            // Exact alarm permission revoked; tomorrow's alarm will not fire
+        }
     }
 
     static void showNotification(Context ctx, int slot) {

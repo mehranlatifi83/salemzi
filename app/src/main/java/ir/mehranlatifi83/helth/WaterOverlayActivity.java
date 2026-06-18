@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
@@ -29,6 +30,10 @@ public class WaterOverlayActivity extends AppCompatActivity {
 
         int slot = getIntent().getIntExtra(WaterReminderReceiver.EXTRA_SLOT, 0);
         setupMessage(slot);
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() { finish(); }
+        });
 
         MaterialButton btnDone = findViewById(R.id.btn_water_done);
         btnDone.setOnClickListener(v -> finish());
@@ -68,8 +73,4 @@ public class WaterOverlayActivity extends AppCompatActivity {
         if (autoTimer != null) autoTimer.cancel();
     }
 
-    @Override
-    public void onBackPressed() {
-        finish(); // allow back to dismiss
-    }
 }

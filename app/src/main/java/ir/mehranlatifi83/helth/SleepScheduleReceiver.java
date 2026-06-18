@@ -116,27 +116,6 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
                         .build());
     }
 
-    private void showWakeNotification(Context ctx) {
-        ensureChannel(ctx);
-
-        PendingIntent openApp = PendingIntent.getActivity(
-                ctx, 0,
-                new Intent(ctx, MainActivity.class)
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-        nm.notify(NOTIF_WAKE, new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                .setContentTitle(ctx.getString(R.string.notif_wake_title))
-                .setContentText(ctx.getString(R.string.notif_wake_text))
-                .setSmallIcon(R.drawable.ic_sun)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(openApp)
-                .setAutoCancel(true)
-                .build());
-    }
-
     public static void ensureChannel(Context ctx) {
         NotificationChannel ch = new NotificationChannel(
                 CHANNEL_ID,

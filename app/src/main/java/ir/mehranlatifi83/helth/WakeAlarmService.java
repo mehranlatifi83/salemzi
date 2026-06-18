@@ -28,6 +28,7 @@ public class WakeAlarmService extends Service {
     static final String PREF_SOUND_URI = "alarm_sound_uri";
 
     private MediaPlayer player;
+    private boolean cleanupDone = false;
 
     // ─── Service lifecycle ───────────────────────────────────────────────────
 
@@ -42,6 +43,7 @@ public class WakeAlarmService extends Service {
             // Stop alarm immediately inside onStartCommand — don't wait for onDestroy.
             // This is the only reliable way to cut the sound synchronously.
             stopAlarm();
+            cleanupDone = true;
             doFullSleepCleanup();
             stopForeground(true);
             stopSelf();
@@ -57,10 +59,9 @@ public class WakeAlarmService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Safety net: stop alarm and clean up sleep state in case the service
-        // is killed without going through the dismiss path.
+        // Safety net: only clean up if onStartCommand's dismiss path didn't already do it.
         stopAlarm();
-        doFullSleepCleanup();
+        if (!cleanupDone) doFullSleepCleanup();
         getSystemService(NotificationManager.class).cancel(NOTIF_ID);
     }
 
@@ -161,9 +162,13 @@ public class WakeAlarmService extends Service {
     private Notification buildNotification() {
         Intent dismissIntent = new Intent(this, WakeAlarmService.class)
                 .setAction(ACTION_DISMISS);
-        PendingIntent dismissPi = PendingIntent.getService(
-                this, 0, dismissIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        // Use getForegroundService on API 26+ to avoid IllegalStateException when the
+        // notification action is tapped while the app is in the background.
+        PendingIntent dismissPi = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                ? PendingIntent.getForegroundService(this, 0, dismissIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE)
+                : PendingIntent.getService(this, 0, dismissIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // fullScreenIntent ensures the notification appears prominently on lock screen
         // and fires even after the heads-up popup has slid away

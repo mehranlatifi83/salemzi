@@ -2,7 +2,6 @@ package ir.mehranlatifi83.helth;
 
 import android.content.Context;
 import android.view.Gravity;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.LinearLayout;
 import android.widget.NumberPicker;
 import android.widget.TextView;

@@ -127,16 +127,15 @@ public class WaterReminderManager {
         int lastClock = -1000;
         for (int i = 1; i <= COUNT; i++) {
             int targetOffset = interval * i;
-            if (targetOffset > totalValid) break;
 
-            int clock = offsetToClockMin(valid, targetOffset);
-            if (clock < 0) break;
+            // Map the target offset to a clock minute; -1 when past end of valid time
+            int clock = (targetOffset <= totalValid) ? offsetToClockMin(valid, targetOffset) : -1;
 
-            // Enforce minimum gap: push forward if too close to previous reminder
-            if (clock - lastClock < MIN_GAP_MIN) {
+            // Enforce minimum gap: if the evenly-spaced slot is too close (or past valid
+            // time entirely), try placing the reminder at lastClock + MIN_GAP_MIN instead.
+            if (clock < 0 || clock - lastClock < MIN_GAP_MIN) {
                 clock = lastClock + MIN_GAP_MIN;
-                // Verify the adjusted time is still in a valid segment
-                if (!isInValidSegment(valid, clock)) continue;
+                if (!isInValidSegment(valid, clock)) break; // no room left
             }
 
             result.add(new int[]{(clock % (24 * 60)) / 60, (clock % (24 * 60)) % 60});
@@ -211,10 +210,10 @@ public class WaterReminderManager {
         return -1;
     }
 
-    /** Returns true if the given clock minute falls within any valid segment. */
+    /** Returns true if the given clock minute falls within any valid segment (inclusive). */
     private static boolean isInValidSegment(List<int[]> valid, int clockMin) {
         for (int[] v : valid) {
-            if (clockMin >= v[0] && clockMin < v[1]) return true;
+            if (clockMin >= v[0] && clockMin <= v[1]) return true;
         }
         return false;
     }

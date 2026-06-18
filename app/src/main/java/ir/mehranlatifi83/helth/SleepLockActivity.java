@@ -59,6 +59,7 @@ public class SleepLockActivity extends AppCompatActivity {
     private int  mathAnswer;
     private int  wrongCount = 0;
     private boolean timedMode;
+    private boolean exitCalled = false;
 
     private CountDownTimer countDownTimer;
     private final Handler  clockHandler = new Handler(Looper.getMainLooper());
@@ -129,9 +130,10 @@ public class SleepLockActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (countDownTimer != null) countDownTimer.cancel();
-        // Safety net: if the activity is destroyed without going through exitSleepMode
-        // (e.g., system kills it), make sure the alarm is stopped
-        WakeAlarmService.stop(this);
+        // Safety net: only stop the alarm service if exitSleepMode() was never called
+        // (e.g., system killed the activity). Avoids a double-stop when the user exits
+        // normally, since exitSleepMode() already sent ACTION_DISMISS.
+        if (!exitCalled) WakeAlarmService.stop(this);
     }
 
     // ─── Mode setup ──────────────────────────────────────────────────────────
@@ -376,6 +378,7 @@ public class SleepLockActivity extends AppCompatActivity {
     // ─── Exit ────────────────────────────────────────────────────────────────
 
     private void exitSleepMode() {
+        exitCalled = true;
         // Stop the wake alarm FIRST (sends ACTION_DISMISS → player.reset() immediately)
         WakeAlarmService.stop(this);
 
