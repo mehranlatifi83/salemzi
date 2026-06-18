@@ -64,6 +64,7 @@
     <string name="memory_hint">Numbers</string>
     <string name="memory_got_it">Got it!</string>
     <string name="answer_hint">Answer</string>
+    <string name="retry">Try Again</string>
     <string name="wrong_try_again">Wrong! Try again</string>
     <string name="wrong_count">Nope! 😴 (%d wrong)</string>
     <string name="wrong_go_sleep">Go back to sleep! %d wrong 🌙</string>

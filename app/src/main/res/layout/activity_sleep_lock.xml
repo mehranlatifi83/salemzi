@@ -152,6 +152,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
 
+            <!-- Try Again — only shown during memory challenge -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_retry_memory"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/retry"
+                android:textSize="14sp"
+                android:visibility="gone"
+                app:cornerRadius="24dp"
+                style="@style/Widget.Material3.Button.OutlinedButton"/>
+
         </LinearLayout>
 
         <!-- ══════════ COUNTDOWN SECTION (always shown during sleep) ══════════ -->

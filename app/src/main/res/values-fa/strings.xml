@@ -64,6 +64,7 @@
     <string name="memory_hint">اعداد</string>
     <string name="memory_got_it">حفظ کردم!</string>
     <string name="answer_hint">جواب</string>
+    <string name="retry">دوباره امتحان کن</string>
     <string name="wrong_try_again">اشتباهه! دوباره امتحان کن</string>
     <string name="wrong_count">نه! 😴 (%d بار اشتباه)</string>
     <string name="wrong_go_sleep">برو بخواب! %d بار اشتباه 🌙</string>

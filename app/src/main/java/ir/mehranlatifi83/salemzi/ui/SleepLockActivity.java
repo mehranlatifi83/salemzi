@@ -73,6 +73,7 @@ public class SleepLockActivity extends AppCompatActivity {
     private TextInputEditText editAnswer;
     private TextInputLayout   inputLayoutAnswer;
     private TextView          textError;
+    private MaterialButton    btnRetryMemory;
 
     // Clock (shared)
     private TextView textClock;
@@ -157,6 +158,7 @@ public class SleepLockActivity extends AppCompatActivity {
         inputLayoutAnswer   = findViewById(R.id.input_layout_answer);
         editAnswer          = findViewById(R.id.edit_answer);
         textError           = findViewById(R.id.text_error);
+        btnRetryMemory      = findViewById(R.id.btn_retry_memory);
     }
 
     @Override
@@ -377,7 +379,7 @@ public class SleepLockActivity extends AppCompatActivity {
         String seq = randomDigitSequence(5);
         new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.memory_show_prompt))
-                .setMessage(seq)
+                .setMessage(formatSequence(seq))
                 .setCancelable(false)
                 .setPositiveButton(R.string.memory_got_it, (d, w) -> showEarlyExitMemoryInput(seq))
                 .show();
@@ -394,6 +396,8 @@ public class SleepLockActivity extends AppCompatActivity {
                     if (typed.equals(seq)) exitSleepMode();
                     else handler.post(this::showEarlyExitMemoryDialog);
                 })
+                .setNeutralButton(R.string.retry, (d, w) ->
+                        handler.post(this::showEarlyExitMemoryDialog))
                 .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
@@ -493,11 +497,13 @@ public class SleepLockActivity extends AppCompatActivity {
     private void startAlarmMemoryReveal(MaterialButton btnConfirm) {
         memorySequence = randomDigitSequence(5);
         textChallengePrompt.setText(R.string.alarm_memory_prompt);
-        textMathProblem.setText(memorySequence);
+        // Format with spaces so digits are easy to read
+        textMathProblem.setText(formatSequence(memorySequence));
         textMathProblem.setVisibility(View.VISIBLE);
         textError.setVisibility(View.INVISIBLE);
         inputLayoutAnswer.setVisibility(View.GONE);
         btnConfirm.setVisibility(View.GONE);
+        btnRetryMemory.setVisibility(View.GONE);
 
         handler.postDelayed(() -> {
             textMathProblem.setVisibility(View.GONE);
@@ -508,8 +514,13 @@ public class SleepLockActivity extends AppCompatActivity {
             editAnswer.setText("");
             editAnswer.requestFocus();
             btnConfirm.setVisibility(View.VISIBLE);
+            btnRetryMemory.setVisibility(View.VISIBLE);
 
             btnConfirm.setOnClickListener(v -> checkAlarmMemoryAnswer(btnConfirm));
+            btnRetryMemory.setOnClickListener(v -> {
+                textError.setVisibility(View.INVISIBLE);
+                startAlarmMemoryReveal(btnConfirm);
+            });
             editAnswer.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     checkAlarmMemoryAnswer(btnConfirm); return true;
@@ -531,9 +542,6 @@ public class SleepLockActivity extends AppCompatActivity {
             textError.setVisibility(View.VISIBLE);
             editAnswer.startAnimation(AnimationUtils.loadAnimation(this, R.anim.shake));
             editAnswer.setText("");
-            inputLayoutAnswer.setVisibility(View.GONE);
-            btnConfirm.setVisibility(View.GONE);
-            editAnswer.postDelayed(() -> startAlarmMemoryReveal(btnConfirm), 1000);
         }
     }
 
@@ -590,6 +598,15 @@ public class SleepLockActivity extends AppCompatActivity {
         if (opCode == 11) return "(" + qa[1] + " × " + qa[2] + ") - " + qa[4] + " = ؟";
         if (opCode == 20) return "(" + qa[1] + " × " + qa[2] + ") + (" + qa[4] + " × " + qa[5] + ") = ؟";
         return "؟";
+    }
+
+    private String formatSequence(String seq) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < seq.length(); i++) {
+            if (i > 0) sb.append("  ");
+            sb.append(seq.charAt(i));
+        }
+        return sb.toString();
     }
 
     private String randomDigitSequence(int length) {
