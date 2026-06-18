@@ -49,12 +49,26 @@ public class MainActivity extends AppCompatActivity {
     private TextView         textOverlayStatus;
     private TextView         textSoundName;
 
-    private boolean isSleepActive = false;
+    private boolean isSleepActive       = false;
+    private boolean pendingScheduleEnable = false;
 
     /** Handles the system VPN-permission dialog result. */
     private final ActivityResultLauncher<Intent> vpnLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
-            result -> { if (result.getResultCode() == RESULT_OK) startSleepMode(); }
+            result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    if (pendingScheduleEnable) {
+                        // VPN authorized as part of enabling the automatic schedule
+                        pendingScheduleEnable = false;
+                        ScheduleManager.setScheduleEnabled(this, true);
+                        updateScheduleUI();
+                    } else {
+                        startSleepMode();
+                    }
+                } else {
+                    pendingScheduleEnable = false;
+                }
+            }
     );
 
     /** Handles the system ringtone picker result. */
@@ -256,6 +270,15 @@ public class MainActivity extends AppCompatActivity {
             switchSchedule.setChecked(false);
             showAlarmPermissionDialog();
             return;
+        }
+        if (checked) {
+            // Pre-authorize VPN so it works when the schedule fires automatically at night.
+            Intent vpnIntent = VpnService.prepare(this);
+            if (vpnIntent != null) {
+                pendingScheduleEnable = true;
+                vpnLauncher.launch(vpnIntent);
+                return; // schedule will be enabled inside vpnLauncher result callback
+            }
         }
         ScheduleManager.setScheduleEnabled(this, checked);
         updateScheduleUI();

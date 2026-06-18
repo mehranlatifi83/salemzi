@@ -41,17 +41,28 @@ public class SleepScheduleReceiver extends BroadcastReceiver {
         AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
         am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
 
-        ctx.startForegroundService(new Intent(ctx, SleepVpnService.class));
+        // Only start VPN if the user has already pre-authorized it (prepare returns null
+        // when authorized). Without authorization, the tunnel silently fails to establish.
+        if (android.net.VpnService.prepare(ctx) == null) {
+            ctx.startForegroundService(new Intent(ctx, SleepVpnService.class));
+        }
 
         ctx.getSharedPreferences("helth_prefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("sleep_active", true).apply();
 
-        // If the user granted SYSTEM_ALERT_WINDOW, launch the activity directly over
-        // whatever is currently on screen. Otherwise fall back to full-screen notification.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(ctx)) {
+        boolean canOverlay = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && Settings.canDrawOverlays(ctx);
+
+        if (canOverlay) {
+            // Overlay path: show the lock screen directly; no alarm-priority notification
+            // so there is no double sound and no competing fullScreenIntent that would
+            // restart the activity with FLAG_ACTIVITY_CLEAR_TASK.
             SleepLockActivity.launch(ctx);
+        } else {
+            // No overlay: fall back to a full-screen-intent notification which is the
+            // only reliable way to show an activity over any foreground app on API 29+.
+            showSleepNotification(ctx);
         }
-        showSleepNotification(ctx);
     }
 
     private void deactivateSleepMode(Context ctx) {

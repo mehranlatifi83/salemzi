@@ -124,6 +124,12 @@ public class SleepLockActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         clockHandler.removeCallbacks(clockTick);
+        // If the user pressed HOME (or any other means of leaving) without going through
+        // exitSleepMode(), immediately re-launch to pull the lock screen back to the front.
+        // SYSTEM_ALERT_WINDOW permission allows starting activities from the background.
+        if (!exitCalled && !isFinishing()) {
+            SleepLockActivity.launch(this);
+        }
     }
 
     @Override
