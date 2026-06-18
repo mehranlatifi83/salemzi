@@ -82,10 +82,13 @@ public class SleepLockActivity extends AppCompatActivity {
     // ─── State ───────────────────────────────────────────────────────────────
     private int     mathAnswer;
     private String  memorySequence;
-    private int     wrongCount        = 0;
-    private boolean exitCalled        = false;
-    private boolean screenTurningOff  = false;
+    private int     wrongCount          = 0;
+    private boolean exitCalled          = false;
+    private boolean screenTurningOff    = false;
     private boolean wakeChallengeActive = false;
+
+    // True while this activity is the visible foreground activity.
+    private static boolean isInForeground = false;
 
     private CountDownTimer countDownTimer;
     private final Handler  handler   = new Handler(Looper.getMainLooper());
@@ -165,10 +168,9 @@ public class SleepLockActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Cancel any pending relaunch (e.g., we resumed before the 300 ms fired).
+        isInForeground = true;
         handler.removeCallbacks(relaunchIfNeeded);
         screenTurningOff = false;
-        // Unregister before re-registering to avoid duplicate registration if onPause's
-        // delayed runnable hasn't fired yet.
         try { unregisterReceiver(screenOffReceiver); } catch (IllegalArgumentException ignored) {}
         registerReceiver(screenOffReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
         handler.post(clockTick);
@@ -179,6 +181,7 @@ public class SleepLockActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        isInForeground = false;
         handler.removeCallbacks(clockTick);
         // During wake alarm, clear FLAG_KEEP_SCREEN_ON so the power button can turn
         // the screen off. It is restored in onResume() when the user comes back.
@@ -408,7 +411,16 @@ public class SleepLockActivity extends AppCompatActivity {
         if (wakeChallengeActive) return;
         wakeChallengeActive = true;
         keepScreenOn();
-        WakeAlarmService.start(this);
+        if (isInForeground) {
+            // Activity is visible — set the flag directly so relaunched instances know
+            // to show the challenge, but skip starting WakeAlarmService (avoids double
+            // alarm sound and an unwanted notification while the user is already here).
+            getSharedPreferences(PREFS, MODE_PRIVATE)
+                    .edit().putBoolean(WakeAlarmService.KEY_WAKE_ALARM_ACTIVE, true).apply();
+        } else {
+            // Not visible — start the service so the alarm rings and notification appears.
+            WakeAlarmService.start(this);
+        }
         showWakeChallengeUI();
     }
 
@@ -645,6 +657,7 @@ public class SleepLockActivity extends AppCompatActivity {
         getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean("sleep_active", false)
+                .putBoolean(WakeAlarmService.KEY_WAKE_ALARM_ACTIVE, false)
                 .remove(KEY_SLEEP_START)
                 .apply();
 
