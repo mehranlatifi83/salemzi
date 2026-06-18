@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "helth"
+rootProject.name = "salemzi"
 include ':app'
