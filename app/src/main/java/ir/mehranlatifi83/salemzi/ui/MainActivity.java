@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_SLEEP_ACTIVE     = "sleep_active";
     private static final String KEY_OB_DND_SHOWN     = "onboarding_dnd_shown";
     private static final String KEY_OB_OVERLAY_SHOWN = "onboarding_overlay_shown";
+    private static final String KEY_PRIVACY_ACCEPTED = "privacy_policy_accepted";
 
     private MaterialButton   btnToggle;
     private TextView         textStatus;
@@ -110,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
         setupBottomNav();
         setupScheduleCard();
         requestNotificationPermissionIfNeeded();
+        showPrivacyPolicyIfNeeded();
     }
 
     @Override
@@ -347,6 +349,28 @@ public class MainActivity extends AppCompatActivity {
                     d.dismiss();
                 })
                 .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    // ─── Privacy policy ──────────────────────────────────────────────────────
+
+    private void showPrivacyPolicyIfNeeded() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (prefs.getBoolean(KEY_PRIVACY_ACCEPTED, false)) return;
+
+        String lang = Locale.getDefault().getLanguage();
+        String file = "fa".equals(lang) ? "privacy_policy_fa.html" : "privacy_policy_en.html";
+
+        android.webkit.WebView webView = new android.webkit.WebView(this);
+        webView.loadUrl("file:///android_asset/" + file);
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.privacy_policy_title)
+                .setView(webView)
+                .setCancelable(false)
+                .setPositiveButton(R.string.accept, (d, w) ->
+                        prefs.edit().putBoolean(KEY_PRIVACY_ACCEPTED, true).apply())
+                .setNegativeButton(R.string.decline, (d, w) -> finishAffinity())
                 .show();
     }
 

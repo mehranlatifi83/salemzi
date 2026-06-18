@@ -91,6 +91,11 @@
     <string name="confirm_awake">I\'m awake ✓</string>
     <string name="wake_time_reached">Wake-up time! Alarm is ringing 🔔</string>
 
+    <!-- Privacy policy -->
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="accept">Accept</string>
+    <string name="decline">Decline</string>
+
     <!-- Sound picker -->
     <string name="sound_picker_label">Wake-up sound</string>
     <string name="sound_default">System default ringtone</string>

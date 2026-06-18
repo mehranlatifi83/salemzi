@@ -91,6 +91,11 @@
     <string name="confirm_awake">بیدار شدم ✓</string>
     <string name="wake_time_reached">وقت بیداریه! زنگ داره میخوره 🔔</string>
 
+    <!-- Privacy policy -->
+    <string name="privacy_policy_title">سیاست حریم خصوصی</string>
+    <string name="accept">قبول می‌کنم</string>
+    <string name="decline">نمی‌پذیرم</string>
+
     <!-- Sound picker -->
     <string name="sound_picker_label">صدای بیداری</string>
     <string name="sound_default">زنگ پیش‌فرض سیستم</string>
